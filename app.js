@@ -1,4 +1,6 @@
 const express = require('express');
+const session = require('express-session');
+const flash = require('connect-flash');
 const bodyParser = require('body-parser');
 var methodOverride = require('method-override');
 const exphbs = require('express-handlebars');
@@ -15,23 +17,32 @@ mongoose
   })
   .then(() => console.log('Databse Conntected'))
   .catch(err => console.log(err));
-// mongoose
-//   .connect(
-//     'mongodb+srv://tamim:tamim@notereg-6dkt1.mongodb.net/test?retryWrites=true&w=majority',
-//     { useNewUrlParser: true, useUnifiedTopology: true }
-//   )
-//   .then(() => console.log('Databse Conntected'))
-//   .catch(err => console.log(err));
 
 // Load Note Model
 require('./models/Note');
 const Note = mongoose.model('notes');
 
+app.use(
+  session({
+    secret: 'secret',
+    resave: true,
+    saveUninitialized: true
+  })
+);
+app.use(flash());
 app.engine('handlebars', exphbs());
 app.set('view engine', 'handlebars');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(methodOverride('_method'));
+
+// Global Variables for Flash Mesgs
+app.use((req, res, next) => {
+  res.locals.success_msg = req.flash('success_msg');
+  res.locals.error_msg = req.flash('error_msg');
+  res.locals.error = req.flash('error');
+  next();
+});
 
 // Index Route
 app.get('/', (req, res) => {
@@ -88,6 +99,7 @@ app.post('/notes', (req, res) => {
       content: req.body.content
     };
     new Note(newUser).save().then(note => {
+      req.flash('success_msg', 'Note has been added.')
       res.redirect('/notes');
     });
   }
@@ -98,6 +110,7 @@ app.put('/notes/:id', (req, res) => {
     note.title = req.body.title;
     note.content = req.body.content;
     note.save().then(note => {
+      req.flash('success_msg', 'Note has been updated.')
       res.redirect('/notes');
     });
   });
@@ -106,6 +119,7 @@ app.put('/notes/:id', (req, res) => {
 app.delete('/notes/:id', (req, res) => {
   Note.findById(req.params.id).then(note => {
     note.remove().then(() => {
+      req.flash('success_msg', 'Note has been removed.')
       res.redirect('/notes');
     });
   });
